@@ -42,6 +42,4 @@ Publish your demo pipeline project on GitHub
 Explain how to test your pipeline (how to do unit, integration, performance tests)
 
 
-#  TODO
-use https://crontab.guru
 
