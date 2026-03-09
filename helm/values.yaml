@@ -1,0 +1,41 @@
+dagster-user-deployments:
+  deployments:
+    - name: ameriabank
+      image:
+        repository: ameriabank-dagster
+        tag: latest
+        pullPolicy: Never
+      dagsterApiGrpcArgs:
+        - "-m"
+        - "Ameriabank"
+      port: 3030
+      env:
+        - name: DUCKDB_DATABASE
+          value: /dagster_home/bank.db
+        - name: DAGSTER_HOME
+          value: /dagster_home
+        - name: PYTHONPATH
+          value: /app/src
+      volumeMounts:
+        - name: dagster-home
+          mountPath: /dagster_home
+        - name: data
+          mountPath: /data/detail
+      volumes:
+        - name: dagster-home
+          persistentVolumeClaim:
+            claimName: dagster-home-pvc
+        - name: data
+          persistentVolumeClaim:
+            claimName: data-pvc
+
+postgresql:
+  enabled: true
+
+dagsterDaemon:
+  enabled: true
+
+dagit:
+  service:
+    type: NodePort
+    nodePort: 30000

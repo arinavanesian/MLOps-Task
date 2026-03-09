@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dagster-config
+data:
+  DAGSTER_HOME: /dagster_home
+  DUCKDB_DATABASE: /dagster_home/bank.db
+  PYTHONPATH: /app/src

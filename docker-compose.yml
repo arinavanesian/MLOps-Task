@@ -1,0 +1,15 @@
+services:
+  dagster:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DAGSTER_HOME: /dagster_home
+      DUCKDB_DATABASE: /dagster_home/bank.db
+    volumes:
+      - dagster_home:/dagster_home
+      - ./src/Ameriabank/data/detail:/data/detail
+    restart: unless-stopped
+
+volumes:
+  dagster_home:

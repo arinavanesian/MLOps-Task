@@ -9,7 +9,7 @@ from .constants import TRX_PARQ_PATH, DATE_FORMAT
 
 # TODO: seperate the loader from the asset
 daily_partition_def = dg.DailyPartitionsDefinition(
-    start_date="2021-01-01",
+    start_date="2020-12-31",
     end_date="2022-12-31")
 
 @dg.asset(partitions_def = daily_partition_def,

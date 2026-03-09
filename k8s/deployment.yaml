@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dagster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dagster
+  template:
+    metadata:
+      labels:
+        app: dagster
+    spec:
+      containers:
+        - name: dagster
+          image: ameriabank-dagster:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: dagster-config
+          volumeMounts:
+            - name: dagster-home
+              mountPath: /dagster_home
+            - name: data
+              mountPath: /data/detail
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+      volumes:
+        - name: dagster-home
+          persistentVolumeClaim:
+            claimName: dagster-home-pvc
+        - name: data
+          persistentVolumeClaim:
+            claimName: data-pvc
