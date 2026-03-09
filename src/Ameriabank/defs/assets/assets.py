@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 import dagster as dg
 from dagster import AssetExecutionContext, MaterializeResult
 from dagster_duckdb import DuckDBResource
@@ -33,8 +35,6 @@ def trx(context: dg.AssetExecutionContext, database: DuckDBResource) -> dg.Mater
         conn.execute(f"INSERT INTO {table_name} SELECT * FROM trx_df")
     context.log.info(f"Processing transactions for partition: {start_date} - {end_date}")
     
-    # read the parqs to polars and load to duckdb
-
    
     row_count = trx_df.height
     context.add_output_metadata({"partition_start": start_date,
@@ -50,47 +50,52 @@ def fetch_daily_data(context: AssetExecutionContext, database: DuckDBResource) -
     start_date = partition_range.start
     end_date = partition_range.end
 
+    # Fetch with 30-day lookback for rolling window
+    start_dt = datetime.strptime(start_date, DATE_FORMAT)
+    lookback_start = (start_dt - timedelta(days=30)).strftime(DATE_FORMAT)
+
     with database.get_connection() as conn:
         trx_df = conn.execute(f"""
-            SELECT * FROM trx 
-            WHERE CAST(event_time AS DATE) BETWEEN '{start_date}' AND '{end_date}'
+            SELECT event_time, client_id, amount, event_type
+            FROM trx
+            WHERE CAST(event_time AS DATE) BETWEEN '{lookback_start}' AND '{end_date}'
         """).pl()
 
-
     features_df = (
-    trx_df
-    .sort("event_time")
-    .select(
-        pl.col("event_time").dt.date().alias("event_time"),  # cast to date
-        pl.col("client_id"),
-        pl.col("amount"),
-        pl.col("event_type"),
-    )
-    .rolling(index_column="event_time", period="1mo", group_by="client_id")
-    .agg([
-        pl.col("amount").mean().alias("avg_amount"),
-        pl.col("amount").sum().alias("sum_amount"),
-        pl.col("event_type").count().alias("txn_count"),
-    ])
+        trx_df
+        .sort("event_time")
+        .with_columns(pl.col("event_time").dt.date().alias("event_time"))
+        .rolling(index_column="event_time", period="1mo", group_by="client_id")
+        .agg([
+            pl.col("amount").mean().alias("avg_amount"),
+            pl.col("amount").sum().alias("sum_amount"),
+            pl.col("event_type").count().alias("txn_count"),
+        ])
+        # trim to actual partition range, exclude lookback rows
+        .filter(
+            (pl.col("event_time") >= pl.lit(start_date).str.to_date(DATE_FORMAT)) &
+            (pl.col("event_time") <= pl.lit(end_date).str.to_date(DATE_FORMAT))
+        )
     )
 
     with database.get_connection() as conn:
-        # Create from explicit schema, not from features_df reference
+        # Schema matches actual features_df columns: client_id, event_time, avg_amount, sum_amount, txn_count
         conn.execute("""
             CREATE TABLE IF NOT EXISTS features (
                 client_id VARCHAR,
-                event_type VARCHAR,
-                date DATE,
-                avg_daily_amount DOUBLE,
-                daily_txn_count BIGINT
+                event_time DATE,
+                avg_amount DOUBLE,
+                sum_amount DOUBLE,
+                txn_count BIGINT
             )
         """)
-        # Delete full range not just start_date
         conn.execute(f"""
-            DELETE FROM features 
-            WHERE date BETWEEN '{start_date}' AND '{end_date}'
+            DELETE FROM features
+            WHERE event_time BETWEEN '{start_date}' AND '{end_date}'
         """)
+        conn.register("features_df", features_df)
         conn.execute("INSERT INTO features SELECT * FROM features_df")
+        conn.unregister("features_df")
 
     row_count = features_df.height
     context.add_output_metadata({"partition_start": start_date,
