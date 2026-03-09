@@ -1,0 +1,23 @@
+#!/bin/bash
+
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+echo "How do you want to run Ameriabank pipeline?"
+echo "  1) Local (uv)"
+echo "  2) Docker"
+select opt in "Local" "Docker"; do
+    case $opt in
+        Local)
+            export DUCKDB_DATABASE="$PROJECT_DIR/data/bank.db"
+            mkdir -p "$PROJECT_DIR/data"
+            cd "$PROJECT_DIR"
+            uv run dagster dev
+            break
+            ;;
+        Docker)
+            cd "$PROJECT_DIR"
+            docker compose -f "$PROJECT_DIR/docker-compose.yml" up --build
+            break
+            ;;
+    esac
+done
