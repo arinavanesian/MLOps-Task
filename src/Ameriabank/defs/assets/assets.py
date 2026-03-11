@@ -10,7 +10,7 @@ from .constants import TRX_PARQ_PATH, DATE_FORMAT
 # TODO: seperate the loader from the asset
 daily_partition_def = dg.DailyPartitionsDefinition(
     start_date="2020-12-31",
-    end_date="2022-12-31")
+    end_date="2023-01-01")
 
 @dg.asset(partitions_def = daily_partition_def,
           backfill_policy = dg.BackfillPolicy.single_run())
