@@ -1,4 +1,4 @@
-# Ameriabank Feature Pipeline
+# Bank Feature Pipeline
 
 A Dagster pipeline that computes daily aggregate features for each client from the MBD-mini transaction dataset.
 
