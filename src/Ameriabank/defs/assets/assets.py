@@ -14,7 +14,7 @@ daily_partition_def = dg.DailyPartitionsDefinition(
 
 @dg.asset(partitions_def = daily_partition_def,
           backfill_policy = dg.BackfillPolicy.single_run())
-def trx(context: dg.AssetExecutionContext, database: DuckDBResource) -> dg.MaterializeResult:
+def trx(context: AssetExecutionContext, database: DuckDBResource) -> MaterializeResult:
     trx_parq_path = TRX_PARQ_PATH
     partition_range = context.partition_key_range
     start_date = partition_range.start
