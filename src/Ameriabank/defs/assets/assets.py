@@ -43,7 +43,6 @@ def trx(context: AssetExecutionContext, database: DuckDBResource) -> Materialize
     return MaterializeResult(metadata ={"table": table_name})
     
 @dg.asset(partitions_def=daily_partition_def,
-          backfill_policy=dg.BackfillPolicy.single_run(),
           deps=["trx"])
 def fetch_daily_data(context: AssetExecutionContext, database: DuckDBResource) -> MaterializeResult:
     partition_range = context.partition_key_range
@@ -56,15 +55,19 @@ def fetch_daily_data(context: AssetExecutionContext, database: DuckDBResource) -
 
     with database.get_connection() as conn:
         trx_df = conn.execute(f"""
-            SELECT event_time, client_id, amount, event_type
-            FROM trx
-            WHERE CAST(event_time AS DATE) BETWEEN '{lookback_start}' AND '{end_date}'
-        """).pl()
+        SELECT 
+            CAST(event_time AS DATE) as event_time,
+            client_id,
+            CAST(amount AS DOUBLE) as amount,
+            CAST(event_type AS VARCHAR) as event_type
+        FROM trx
+        WHERE CAST(event_time AS DATE) BETWEEN '{lookback_start}' AND '{end_date}'
+    """).pl()
+
 
     features_df = (
         trx_df
         .sort("event_time")
-        .with_columns(pl.col("event_time").dt.date().alias("event_time"))
         .rolling(index_column="event_time", period="1mo", group_by="client_id")
         .agg([
             pl.col("amount").mean().alias("avg_amount"),

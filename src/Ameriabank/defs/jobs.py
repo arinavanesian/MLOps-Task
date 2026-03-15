@@ -4,8 +4,9 @@ from .partitions import monthly_partition_def
 
 fetch_daily_data = dg.AssetSelection.assets(["fetch_daily_data"])
 daily_job = dg.define_asset_job("daily_job",
- selection = dg.AssetSelection.assets("trx", "fetch_daily_data") 
-)
+ selection = dg.AssetSelection.assets("trx", "fetch_daily_data"),
+ partitions_def=daily_partition_def,
+ )
 
 other_job = dg.define_asset_job("other_job", 
                                 selection = dg.AssetSelection.all()-fetch_daily_data)
